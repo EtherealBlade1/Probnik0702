@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Мой Не Сам — клининг</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header id="main-header" class="main-header hidden">
+  <div class="logo">Мой Не Сам</div>
+  <nav class="nav-menu">
+    <div class="dropdown">
+      <button class="dropbtn" onclick="toggleMenu()">Меню ▾</button>
+      <div id="myDropdown" class="dropdown-content">
+        <a href="#" onclick="show('home')">Мои заявки</a>
+        <a href="#" onclick="show('new')">Создать заказ</a>
+        <hr style="border: 0; border-top: 1px solid rgba(0,0,0,0.1); margin: 5px 0;">
+        <a href="#" onclick="logout()" class="logout-link">Выйти</a>
+      </div>
+    </div>
+  </nav>
+</header>
+
+<div class="container">
+
+  <div class="slider" id="slider-block">
+    <div class="slides">
+      <img src="images/slider1.jpg" alt="слайд1" class="slide active">
+      <img src="images/slider2.jpg" alt="слайд2" class="slide">
+      <img src="images/slider3.jpg" alt="слайд3" class="slide">
+    </div>
+    <button class="prev" onclick="changeSlide(-1)">❮</button>
+    <button class="next" onclick="changeSlide(1)">❯</button>
+    <div class="dots">
+      <span class="dot active" onclick="currentSlide(0)"></span>
+      <span class="dot" onclick="currentSlide(1)"></span>
+      <span class="dot" onclick="currentSlide(2)"></span>
+    </div>
+  </div>
+
+  <div id="login" class="form-page">
+    <h1>Вход</h1>
+    <input id="l_login" placeholder="Логин" autocomplete="off">
+    <input id="l_pass" type="password" placeholder="Пароль">
+    <div id="login_err" class="error"></div>
+    <button onclick="login()">Войти</button>
+    <p class="switch"><a href="#" onclick="show('reg')">Нет аккаунта? Зарегистрируйтесь</a></p>
+  </div>
+
+  <div id="reg" class="form-page hidden">
+    <h1>Регистрация</h1>
+    <input id="r_fio"   placeholder="ФИО (кириллица)">
+    <input id="r_phone" placeholder="+7(XXX)-XXX-XX-XX">
+    <input id="r_email" placeholder="Email">
+    <input id="r_login" placeholder="Логин">
+    <input id="r_pass"  type="password" placeholder="Пароль (мин. 8 символов)">
+    <div id="reg_err" class="error"></div>
+    <button onclick="register()">Зарегистрироваться</button>
+    <p class="switch"><a href="#" onclick="show('login')">Уже есть аккаунт? Войти</a></p>
+  </div>
+
+  <div id="home" class="hidden">
+    <h1>Мои заявки</h1>
+    <button onclick="show('new')">+ Создать заявку</button>
+    <div id="myorders" class="orders-list"></div>
+  </div>
+
+  <div id="new" class="form-page hidden">
+    <h1>Новая заявка</h1>
+    <input id="addr" placeholder="Адрес уборки">
+    <select id="stype">
+      <option value="">Выберите услугу</option>
+      <option>общий клининг</option>
+      <option>генеральная уборка</option>
+      <option>послестроительная уборка</option>
+      <option>химчистка ковров и мебели</option>
+      <option>Иная услуга</option>
+    </select>
+    <textarea id="custom" class="hidden" placeholder="Опишите нужную услугу"></textarea>
+    <div class="row">
+      <input id="date" type="date">
+      <input id="time" type="time">
+    </div>
+    <select id="pay">
+      <option value="">Оплата</option>
+      <option>наличные</option>
+      <option>карта</option>
+    </select>
+    <div id="new_err" class="error"></div>
+    <button onclick="createOrder()">Отправить</button>
+    <button class="gray" onclick="show('home')">Отмена</button>
+  </div>
+
+  <div id="admin" class="hidden">
+    <h1>Админ-панель</h1>
+    <div id="allorders" class="orders-list"></div>
+  </div>
+
+</div>
+
+<script>
+let user = null;
+let slideIndex = 0;
+const slideInterval = setInterval(() => changeSlide(1), 3000);
+
+// --- Навигация и меню ---
+function toggleMenu() {
+  document.getElementById("myDropdown").classList.toggle("show");
+}
+
+window.onclick = function(event) {
+  if (!event.target.matches('.dropbtn')) {
+    const dropdowns = document.getElementsByClassName("dropdown-content");
+    for (let i = 0; i < dropdowns.length; i++) {
+      if (dropdowns[i].classList.contains('show')) dropdowns[i].classList.remove('show');
+    }
+  }
+}
+
+function show(page) {
+ 
+  document.querySelectorAll('#login, #reg, #home, #new, #admin').forEach(el => el.classList.add('hidden'));
+  
+ 
+  document.getElementById(page).classList.remove('hidden');
+
+  const header = document.getElementById('main-header');
+  const slider = document.getElementById('slider-block');
+
+  if (page === 'login' || page === 'reg') {
+    header.classList.add('hidden');
+    slider.classList.remove('hidden');
+  } else {
+    header.classList.remove('hidden');
+    slider.classList.add('hidden'); 
+  }
+
+  if (page === 'home') loadUserOrders();
+  if (page === 'admin') loadAdmin();
+}
+
+// --- Слайдер
+function changeSlide(n) {
+  const slides = document.querySelectorAll('.slide');
+  const dots = document.querySelectorAll('.dot');
+  if(!slides.length) return;
+  slideIndex = (slideIndex + n + slides.length) % slides.length;
+
+  slides.forEach(s => s.classList.remove('active'));
+  dots.forEach(d => d.classList.remove('active'));
+
+  slides[slideIndex].classList.add('active');
+  dots[slideIndex].classList.add('active');
+}
+
+function currentSlide(n) {
+  slideIndex = n;
+  changeSlide(0);
+}
+
+// --- Авторизация
+function login() {
+  const login = document.getElementById('l_login').value.trim();
+  const pass  = document.getElementById('l_pass').value;
+  document.getElementById('login_err').textContent = '';
+
+  fetch('/api/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({login, password: pass})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.id) {
+      user = data;
+      show(data.role === 'admin' ? 'admin' : 'home');
+    } else {
+      document.getElementById('login_err').textContent = data.message || 'Неверный логин/пароль';
+    }
+  })
+  .catch(() => document.getElementById('login_err').textContent = 'Ошибка соединения');
+}
+
+// --- Регистрация
+function register() {
+  const data = {
+    fullName: document.getElementById('r_fio').value.trim(),
+    phone:    document.getElementById('r_phone').value.trim(),
+    email:    document.getElementById('r_email').value.trim(),
+    login:    document.getElementById('r_login').value.trim(),
+    password: document.getElementById('r_pass').value
+  };
+
+  document.getElementById('reg_err').textContent = '';
+
+  if (!data.fullName.match(/^[А-Яа-яЁё\s]+$/) || !data.phone.match(/^\+7\(\d{3}\)-\d{3}-\d{2}-\d{2}$/) ||
+      !data.email.includes('@') || !data.login || data.password.length < 8) {
+    document.getElementById('reg_err').textContent = 'Проверьте поля (ФИО — кириллица, телефон в формате, пароль ≥8)';
+    return;
+  }
+
+  fetch('/api/register', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.message === 'Ok') {
+      alert('Регистрация успешна! Войдите.');
+      show('login');
+    } else {
+      document.getElementById('reg_err').textContent = res.message || 'Ошибка';
+    }
+  })
+  .catch(() => document.getElementById('reg_err').textContent = 'Нет соединения');
+}
+
+// --- Заявки
+function loadUserOrders() {
+  fetch(`/api/orders?userId=${user.id}`)
+    .then(r => r.json())
+    .then(orders => {
+      let html = orders.length ? '' : '<p style="text-align:center; opacity:0.6;">Заявок пока нет</p>';
+      orders.forEach(o => {
+        html += `<div class="card">
+          <div class="status ${o.status}">${o.status}</div>
+          <div style="font-weight:600; margin-bottom:4px;">${o.serviceType}</div>
+          <div style="font-size:0.9rem; opacity:0.8;">${o.address}</div>
+          <small style="display:block; margin-top:8px; font-size:0.75rem;">${new Date(o.dateTime).toLocaleString('ru-RU')}</small>
+        </div>`;
+      });
+      document.getElementById('myorders').innerHTML = html;
+    });
+}
+
+function loadAdmin() {
+  fetch('/api/orders?userId=admin')
+    .then(r => r.json())
+    .then(orders => {
+      let html = orders.length ? '' : '<p class="empty">Заявок нет</p>';
+      orders.forEach(o => {
+        let actions = '';
+        if (o.status === 'новая') {
+          actions = `
+            <div class="row" style="margin-top:10px;">
+              <button style="padding:8px; font-size:12px;" onclick="upd('${o._id}','в работе')">В работу</button>
+              <button style="padding:8px; font-size:12px;" onclick="upd('${o._id}','выполнено')">Готово</button>
+              <button class="gray" style="padding:8px; font-size:12px;" onclick="upd('${o._id}','отменено')">Х</button>
+            </div>
+          `;
+        }
+        html += `<div class="card">
+          <div class="status ${o.status}">${o.status}</div>
+          <small>${o.fullName} • ${o.phone}</small><br>
+          <strong>${o.serviceType}</strong><br>
+          <span style="font-size:0.85rem;">${o.address}</span>
+          <div class="actions">${actions}</div>
+        </div>`;
+      });
+      document.getElementById('allorders').innerHTML = html;
+    });
+}
+
+function upd(id, status) {
+  let reason = '';
+  if (status === 'отменено') {
+    reason = prompt('Укажите причину отмены:') || '';
+    if (!reason.trim()) return;
+  }
+  fetch(`/api/orders/${id}`, {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status, cancelReason: reason})
+  }).then(() => loadAdmin());
+}
+
+function createOrder() {
+  const type = document.getElementById('stype').value;
+  let service = type;
+  if (type === 'Иная услуга') {
+    service = document.getElementById('custom').value.trim();
+    if (!service) return document.getElementById('new_err').textContent = 'Опишите услугу';
+  }
+
+  const dateVal = document.getElementById('date').value;
+  const timeVal = document.getElementById('time').value;
+
+  const data = {
+    userId: user.id,
+    fullName: user.fullName,
+    address: document.getElementById('addr').value.trim(),
+    serviceType: service,
+    dateTime: dateVal && timeVal ? `${dateVal}T${timeVal}:00` : '',
+    paymentType: document.getElementById('pay').value
+  };
+
+  if (!data.address || !data.dateTime || !data.paymentType) {
+    document.getElementById('new_err').textContent = 'Заполните все поля';
+    return;
+  }
+
+  fetch('/api/orders', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  })
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(() => {
+    alert('Заявка отправлена!');
+    show('home');
+  })
+  .catch(() => document.getElementById('new_err').textContent = 'Ошибка отправки');
+}
+
+function logout() {
+  user = null;
+  show('login');
+}
+
+document.getElementById('stype').onchange = function() {
+  document.getElementById('custom').classList.toggle('hidden', this.value !== 'Иная услуга');
+};
+
+show('login');
+</script>
+</body>
+</html>
